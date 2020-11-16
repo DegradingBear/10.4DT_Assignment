@@ -8,8 +8,9 @@ gui.theme('DarkAmber')
 
 windowsLoaded = 1
 
+
 def loginLayout(num):
-    loginLayout = [
+    Layout = [
         [gui.Text("Welcome To", key=f'welcome{num}')],
         [gui.Text("Mentors 4 Mentees", key=f'title{num}')],
         [gui.Text("Stud num or techer login: ", key=f'usernametext{num}'), gui.InputText(key=f'username{num}')],
@@ -17,30 +18,43 @@ def loginLayout(num):
         [gui.Submit("login", key=f'login{num}')]
     ]
 
-    return loginLayout, num
+    return Layout, num
 
-menteeViewLayout = [
-    [gui.Text("INSERT MENTEE LAYOUT HERE")]
-]
 
-adminViewLayout = [
-    [gui.Text("Welcome "), gui.Text("", key='__adminName__', size=(10, 1))],
-    [gui.Text("________________________________________")],
-    [gui.Button("Register Mentee", key="__NewMentee__", size=(35, 2))],
-    [gui.Button("Register Mentor", key="__NewMentor__", size=(35, 2))],
-    [gui.Button("Booked Tutorials", key="__Tutorials__", size=(35, 2))],
-    [gui.Button("Tutorials Report", key='__Report__', size=(35, 2))],
-    [gui.Button("Exit", key='__Exit__', size=(17, 2)), gui.Button("logout", key='__logout__')]
-]
+def menteeViewLayout(num):
+    menteeViewLayoutList = [
+        [gui.Text("INSERT MENTEE LAYOUT HERE", key=f'insert{num}')],
+        [gui.Button("Exit", key=f'__Exit__{num}'), gui.Button("Logout", key=f'__Logout__{num}')]
+    ]
 
-newMenteeLayout = [
-    [gui.Text("Add A New Mentee")],
-    [gui.Text("__________________")],
-    [gui.Text("Name: "), gui.InputText(key='__StudName__'), gui.Text("Grade: "), gui.InputText(key='__StudGrade__')],
-    [gui.Text("Student Number: "), gui.InputText(key='__StudNum__')],
-    [gui.Text("Password: "), gui.InputText(key='__InitPass__'), gui.Text("Confirm Password: "), gui.InputText(key='__PassVerify__')],
-    [gui.Submit("Register Student", key='__Submit__'), gui.Button("Close", key='__Exit__')]
-]
+    return menteeViewLayoutList, num
+
+
+def adminViewLayout(num):
+    Layout = [
+        [gui.Text("Welcome ", key=f'welcome{num}'), gui.Text("", key=f'__adminName__{num}', size=(10, 1))],
+        [gui.Text("________________________________________", key=f'divide{num}')],
+        [gui.Button("Register Mentee", key=f"__NewMentee__{num}", size=(35, 2))],
+        [gui.Button("Register Mentor", key=f"__NewMentor__{num}", size=(35, 2))],
+        [gui.Button("Booked Tutorials", key=f"__Tutorials__{num}", size=(35, 2))],
+        [gui.Button("Tutorials Report", key=f'__Report__{num}', size=(35, 2))],
+        [gui.Button("Exit", key=f'__Exit__{num}', size=(17, 2)), gui.Button("logout", key=f'__logout__{num}', size=(17, 2))]
+    ]
+
+    return Layout, num
+
+
+def newMenteeLayout(num):
+    newMenteeLayout = [
+        [gui.Text("Add A New Mentee", key=f'title{num}')],
+        [gui.Text("__________________", key=f'Barrier{num}')],
+        [gui.Text("Name: ", key=f'NamePrompt{num}'), gui.InputText(key=f'__StudName__{num}'), gui.Text("Grade: ", key=f'grade Prompt {num}'), gui.InputText(key=f'__StudGrade__{num}')],
+        [gui.Text("Student Number: ", key=f'studnumprompt{num}'), gui.InputText(key=f'__StudNum__{num}')],
+        [gui.Text("Password: ", key=f'passPrompt{num}'), gui.InputText(key=f'__InitPass__{num}'), gui.Text("Confirm Password: ", key=f'confirmPrompt{num}'), gui.InputText(key=f'__PassVerify__{num}')],
+        [gui.Submit("Register Student", key=f'__Submit__{num}'), gui.Button("Close", key=f'__Exit__{num}')]
+    ]
+
+    return newMenteeLayout, num
 
 
 def QueryLogin(username, password):
@@ -95,50 +109,59 @@ def login():
 
 
 def menteeView(studentNum):
+    global windowsLoaded
     studInfoQuery = f"""SELECT fname FROM Students WHERE Stud_Num == {studentNum}"""
     studInfo = cursor.execute(studInfoQuery).fetchall()
     fname = studInfo[0][0]
-    Mainwindow = gui.Window(f"{fname}'s Mentee Hub", menteeViewLayout)
+    layout, refNum = menteeViewLayout(windowsLoaded)
+    windowsLoaded += 1
+    Mainwindow = gui.Window(f"{fname}'s Mentee Hub", layout)
     while True:
         event, values = Mainwindow.read()
-        if event in ('exit', gui.WIN_CLOSED):
+        if event in (f'__Exit__{refNum}', gui.WIN_CLOSED):
             break
+        if event == f'__Logout__{refNum}':
+            Mainwindow.close()
+            login()
 
 
 def adminView(adminUser):
-    global adminViewLayout
-    AdminHub = gui.Window("Admin View", adminViewLayout, finalize=True)
-    AdminHub['__adminName__'].update(adminUser)
+    global windowsLoaded
+    Layout, refNum = adminViewLayout(windowsLoaded)
+    windowsLoaded += 1
+    AdminHub = gui.Window("Admin View", Layout, finalize=True)
+    AdminHub[f'__adminName__{refNum}'].update(adminUser)
     while True:
         event, Values = AdminHub.read()
         
-        if event in ('__Exit__', gui.WIN_CLOSED):
+        if event in (f'__Exit__{refNum}', gui.WIN_CLOSED):
             break
-        if event == "__NewMentee__":
+        if event == f"__NewMentee__{refNum}":
             newMentee()
-        if event == '__NewMentor__':
+        if event == f'__NewMentor__{refNum}':
             newMentor()
-        if event == '__logout__':
+        if event == f'__logout__{refNum}':
             AdminHub.close()
             login()
 
 
 def newMentee():
-    global newMenteeLayout
-
-    window = gui.Window("Add New Mentee", newMenteeLayout)
+    global windowsLoaded
+    layout, refNum = newMenteeLayout(windowsLoaded)
+    windowsLoaded += 1
+    window = gui.Window("Add New Mentee", layout)
     while True:
         event, Values = window.read()
         
-        if event in ('__Exit__', gui.WIN_CLOSED):
+        if event in [f'__Exit__{refNum}', gui.WIN_CLOSED]:
             break
 
-        if event == '__Submit__':
-            name = Values['__StudName__']
-            grade = Values['__StudGrade__']
-            StudNum = Values['__StudNum__']
-            pass1 = Values['__InitPass__']
-            pass2 = Values['__PassVerify__']
+        if event == f'__Submit__{refNum}':
+            name = Values[f'__StudName__{refNum}']
+            grade = Values[f'__StudGrade__{refNum}']
+            StudNum = Values[f'__StudNum__{refNum}']
+            pass1 = Values[f'__InitPass__{refNum}']
+            pass2 = Values[f'__PassVerify__{refNum}']
 
             fname, lname = nameSplit(name)
 
@@ -160,7 +183,7 @@ def newMentee():
             else:
                 gui.popup_ok("Please Enter The Students Full Name")
             
-        if event == '__logout__':
+        if event == f'__logout__{refNum}':
             window.close()
             login()
 
@@ -179,5 +202,7 @@ def nameSplit(name):
         return nameList[0], nameList[1]
     except IndexError:
         return False, False
+
+
 #nicee
 login()
