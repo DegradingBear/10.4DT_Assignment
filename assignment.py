@@ -31,7 +31,6 @@ adminViewLayout = [
 newMenteeLayout = [
     [gui.Text("Add A New Mentee")],
     [gui.Text("__________________")],
-    [gui.Text("Register Student As: "), gui.Listbox(["Mentee", "Mentor"], key='__type__')],
     [gui.Text("Name: "), gui.InputText(key='__StudName__'), gui.Text("Grade: "), gui.InputText(key='__StudGrade__')],
     [gui.Text("Student Number: "), gui.InputText(key='__StudNum__')],
     [gui.Text("Password: "), gui.InputText(key='__InitPass__'), gui.Text("Confirm Password: "), gui.InputText(key='__PassVerify__')],
@@ -144,7 +143,7 @@ def newMentee():
                     cursor.execute(addQuery)
                     if gui.popup_yes_no(f"are you sure you want to add {fname}?"):
                         db.commit()
-                        gui.popup_ok(f"{fname} was successfuly registered as a {Values['__type__']}")
+                        gui.popup_ok(f"{fname} was successfuly registered as a Mentee")
                     else:
                         gui.popup_ok(f"ok, {fname} was not added :)")
                     window.close()
