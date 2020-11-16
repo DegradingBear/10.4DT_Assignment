@@ -6,13 +6,18 @@ cursor = db.cursor()
 
 gui.theme('DarkAmber')
 
-loginLayout = [
-    [gui.Text("Welcome To")],
-    [gui.Text("Mentors 4 Mentees")],
-    [gui.Text("Stud num or techer login: "), gui.InputText(key='username')],
-    [gui.Text("Password: "), gui.InputText(key='password')],
-    [gui.Submit("login")]
-]
+windowsLoaded = 1
+
+def loginLayout(num):
+    loginLayout = [
+        [gui.Text("Welcome To", key=f'welcome{num}')],
+        [gui.Text("Mentors 4 Mentees", key=f'title{num}')],
+        [gui.Text("Stud num or techer login: ", key=f'usernametext{num}'), gui.InputText(key=f'username{num}')],
+        [gui.Text("Password: ", key=f'password_TEXT{num}'), gui.InputText(key=f'password{num}')],
+        [gui.Submit("login", key=f'login{num}')]
+    ]
+
+    return loginLayout, num
 
 menteeViewLayout = [
     [gui.Text("INSERT MENTEE LAYOUT HERE")]
@@ -57,16 +62,18 @@ def QueryLogin(username, password):
 
 
 def login():
-    global cursor, user, loginLayout
-    window = gui.Window("M 4 M", loginLayout)
+    global cursor, user, windowsLoaded
+    login, refNum = loginLayout(windowsLoaded)
+    windowsLoaded += 1
+    window = gui.Window("M 4 M", login)
 
     while True:
         event, values = window.read()
         if event == gui.WIN_CLOSED:
             break
-        if event == 'login':
-            username = values['username'] #lmao
-            password = values['password']
+        if event == f'login{refNum}':
+            username = values[f'username{refNum}'] #lmao
+            password = values[f'password{refNum}']
 
             result = QueryLogin(username, password)
 
@@ -111,6 +118,9 @@ def adminView(adminUser):
             newMentee()
         if event == '__NewMentor__':
             newMentor()
+        if event == '__logout__':
+            AdminHub.close()
+            login()
 
 
 def newMentee():
