@@ -72,14 +72,25 @@ def reportLayout(num):
 
 def findMentorsLayout(num):
 
-    query = """SELECT Name FROM Subjects"""
-    results = cursor.execute(query).fetchall()
-    subjectsList = []
-    for tup in results:
+    Subquery = """SELECT Name FROM Subjects"""
+    Subresults = cursor.execute(Subquery).fetchall()
+    subjectsList = [" "]
+    for tup in Subresults:
         subjectsList.append(tup[0])
 
+    timeQuery = """SELECT day FROM Sessions"""
+    timeResults = cursor.execute(timeQuery).fetchall()
+    timeList = [" "]
+    for tup in timeResults:
+        timeList.append(tup[0])
+
+    data = [[' ' for row in range(3)]for col in range(6)]
+
     layout = [
-        [gui.Text("Subject: ", key=f'SubjectPrompt{num}'), gui.Combo(subjectsList, key=f'__Subject__{num}')]
+        [gui.Text("Subject: ", key=f'SubjectPrompt{num}'), gui.Combo(subjectsList, key=f'__Subject__{num}')],
+        [gui.Text("Session", key=f'SessionPrompt{num}'), gui.Combo(timeList, key=f'__Session__{num}')],
+        [gui.Submit("Update Tutorials", key=f'__Search__{num}'), gui.Button("Exit", key=f'__EXIT__{num}')],
+        [gui.Table(headings=['Mentor', 'Subject', 'Session'], values=data, key=f'__Tutorials__{num}')]
     ]
 
     return layout, num
@@ -183,6 +194,23 @@ def login():
                 gui.popup_ok("Incorrect Username or Password")
 
 
+def getMentors(subject, time):
+    if subject == "Any":
+        subject = ""
+    if time == "Any":
+        time = ""
+
+    getIDquery = f"""SELECT MentorID FROM MentorSubjects
+    WHERE Subjects.Name LIKE '%{subject}%'
+    INNER JOIN Subjects ON MentorSubjects.SubjectID = Subjects.SubjectID"""
+    
+    mentorIDresults = cursor.execute(getIDquery).fetchall()
+    mentors = []
+    for tup in mentorIDresults:
+        mentors.append(tup[0])
+    
+
+
 
 def findMentorsView(studnum):
     global windowsLoaded
@@ -193,8 +221,13 @@ def findMentorsView(studnum):
     while True:
         event, values = window.read()
 
-        if event == gui.WIN_CLOSED:
+        if event in [gui.WIN_CLOSED, f'__EXIT__{refNum}']:
             break
+        if event == f'__Search__{refNum}':
+            subject = values[f'__Subject__{refNum}']
+            time = values[f'__Session__{refNum}']
+
+            window[f'__Tutorials__{refNum}'].update(getMentors(subject, time))
 
 
 def menteeView(studentNum):
