@@ -59,9 +59,12 @@ def newMenteeLayout(num):
 
 def reportLayout(num):
 
+    data = [['' for row in range(2)]for col in range(6)]
     layout = [
         [gui.Text("Total Tutorials: ", key=f'totutexp{num}'), gui.Text("", key=f'__TotalTutorials__{num}', size=(6,1))],
-        [gui.Listbox([1, 2, 3, 4, "testing"], key=f'__SubjAmount__{num}',size=(20,20))]
+        [gui.Table(values=data, headings=["     Subject     ", "Total Tutorials"], key=f'__SubjAmount__{num}')],
+        [gui.Text("Mentees: ", key=f'menteesPoint{num}'), gui.Text("", key=f'Num__Mentees__{num}', size=(5,0))],
+        [gui.Text("Mentors: ", key=f'mentorsPoint{num}'), gui.Text("", key=f'Num__Mentors__{num}', size=(5,0))]
     ]
 
     return layout, num
@@ -71,14 +74,38 @@ def Report():
     global windowsLoaded
 
     layout, refNum = reportLayout(windowsLoaded)
-    
-    report = gui.Window("Tutorials Report", layout)
+    windowsLoaded += 1
+    report = gui.Window("Tutorials Report", layout, finalize=True)
+
+    report[f'__SubjAmount__{refNum}'].update(getSubjectsList())
+    report[f'Num__Mentees__{num}'].update(getAmount("mentees"))
+    report[f'Num__Mentors__{num}'].update(getAmount("mentors"))
 
     while True:
         event, values = report.read()
 
         if event in [f'__EXIT__{refNum}', gui.WIN_CLOSED]:
             break
+
+
+def getSubjectsList():
+    query = """SELECT Subjects.name, count(Timetable.SubjectID)
+    FROM Timetable
+    INNER JOIN Subjects ON Timetable.SubjectID = Subjects.SubjectID
+    GROUP BY Timetable.SubjectID"""
+
+    result = cursor.execute(query).fetchall()
+
+    data = []
+
+    for tup in result:
+        row = []
+        row.append([str(tup[0])])
+        row.append([str(tup[1])])
+        data.append(row)
+    
+    return data
+
 
 def QueryLogin(username, password):
     StudLoginQuery = f"""SELECT Password, fname
@@ -218,6 +245,13 @@ def newMentor():
     print("INSERT NEW MENTOR GUI HERE ;)")
 
 
+def getAmount(type_):
+    if type_ == "mentee":
+        return "mentee amount"
+    elif type_ == "mentor":
+        return "mentoor amount"
+
+
 def nameSplit(name):
     nameList = name.split()
     print(nameList)
@@ -228,6 +262,5 @@ def nameSplit(name):
         return nameList[0], nameList[1]
     except IndexError:
         return False, False
-
 
 login()
