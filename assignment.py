@@ -23,7 +23,8 @@ def loginLayout(num):
 
 def menteeViewLayout(num):
     menteeViewLayoutList = [
-        [gui.Text("INSERT MENTEE LAYOUT HERE", key=f'insert{num}')],
+        [gui.Text("", size=(6, 1), key=f'__FName__{num}'), gui.Text("Mentors For Mentees Hub", key=f'insert{num}')],
+        [gui.Button("Find Mentors", key=f'__FindMentor__{num}', size=(20,2))],
         [gui.Button("Exit", key=f'__Exit__{num}'), gui.Button("Logout", key=f'__Logout__{num}')]
     ]
 
@@ -63,8 +64,22 @@ def reportLayout(num):
     layout = [
         [gui.Text("Total Tutorials: ", key=f'totutexp{num}'), gui.Text("", key=f'__TotalTutorials__{num}', size=(6,1))],
         [gui.Table(values=data, headings=["     Subject     ", "Total Tutorials"], key=f'__SubjAmount__{num}')],
-        [gui.Text("Mentees: ", key=f'menteesPoint{num}'), gui.Text("", key=f'Num__Mentees__{num}', size=(5,0))],
-        [gui.Text("Mentors: ", key=f'mentorsPoint{num}'), gui.Text("", key=f'Num__Mentors__{num}', size=(5,0))]
+        [gui.Text("Mentees: ", key=f'menteesPoint{num}'), gui.Text("", key=f'Num__Mentees__{num}', size=(5,0)), gui.Text("Mentors: ", key=f'mentorsPoint{num}'), gui.Text("", key=f'Num__Mentors__{num}', size=(5,0))]
+    ]
+
+    return layout, num
+
+
+def findMentorsLayout(num):
+
+    query = """SELECT Name FROM Subjects"""
+    results = cursor.execute(query).fetchall()
+    subjectsList = []
+    for tup in results:
+        subjectsList.append(tup[0])
+
+    layout = [
+        [gui.Text("Subject: ", key=f'SubjectPrompt{num}'), gui.Combo(subjectsList, key=f'__Subject__{num}')]
     ]
 
     return layout, num
@@ -78,8 +93,9 @@ def Report():
     report = gui.Window("Tutorials Report", layout, finalize=True)
 
     report[f'__SubjAmount__{refNum}'].update(getSubjectsList())
-    report[f'Num__Mentees__{num}'].update(getAmount("mentees"))
-    report[f'Num__Mentors__{num}'].update(getAmount("mentors"))
+    report[f'Num__Mentees__{refNum}'].update(getAmount("mentees"))
+    report[f'Num__Mentors__{refNum}'].update(getAmount("mentors"))
+    report[f'__TotalTutorials__{refNum}'].update(getTotalTut())
 
     while True:
         event, values = report.read()
@@ -88,11 +104,20 @@ def Report():
             break
 
 
+def getTotalTut():
+    query = """SELECT count(*)
+    FROM Tutorials"""
+
+    result = cursor.execute(query).fetchall()
+
+    return result[0][0]
+
+
 def getSubjectsList():
-    query = """SELECT Subjects.name, count(Timetable.SubjectID)
-    FROM Timetable
-    INNER JOIN Subjects ON Timetable.SubjectID = Subjects.SubjectID
-    GROUP BY Timetable.SubjectID"""
+    query = """SELECT Subjects.Name, count(*)
+    FROM Tutorials
+    INNER JOIN Subjects ON Tutorials.SubjectID = Subjects.SubjectID
+    GROUP BY Tutorials.SubjectID"""
 
     result = cursor.execute(query).fetchall()
 
@@ -158,6 +183,20 @@ def login():
                 gui.popup_ok("Incorrect Username or Password")
 
 
+
+def findMentorsView(studnum):
+    global windowsLoaded
+    layout, refNum = findMentorsLayout(windowsLoaded)
+    windowsLoaded += 1
+    window = gui.Window("Find Mentors", layout)
+
+    while True:
+        event, values = window.read()
+
+        if event == gui.WIN_CLOSED:
+            break
+
+
 def menteeView(studentNum):
     global windowsLoaded
     studInfoQuery = f"""SELECT fname FROM Students WHERE Stud_Num == {studentNum}"""
@@ -165,7 +204,9 @@ def menteeView(studentNum):
     fname = studInfo[0][0]
     layout, refNum = menteeViewLayout(windowsLoaded)
     windowsLoaded += 1
-    Mainwindow = gui.Window(f"{fname}'s Mentee Hub", layout)
+    Mainwindow = gui.Window(f"{fname}'s Mentee Hub", layout, finalize=True)
+    Mainwindow[f'__FName__{refNum}'].update(f"{fname}'s")
+
     while True:
         event, values = Mainwindow.read()
         if event in (f'__Exit__{refNum}', gui.WIN_CLOSED):
@@ -173,6 +214,8 @@ def menteeView(studentNum):
         if event == f'__Logout__{refNum}':
             Mainwindow.close()
             login()
+        if event == f'__FindMentor__{refNum}':
+            findMentorsView(studentNum)
 
 
 def adminView(adminUser):
@@ -206,7 +249,7 @@ def newMentee():
     while True:
         event, Values = window.read()
         
-        if event in [f'__Exit__{refNum}', gui.WIN_CLOSED]:
+        if event == f'__Exit__{refNum}' or event == gui.WIN_CLOSED:
             break
 
         if event == f'__Submit__{refNum}':
@@ -246,10 +289,16 @@ def newMentor():
 
 
 def getAmount(type_):
-    if type_ == "mentee":
-        return "mentee amount"
-    elif type_ == "mentor":
-        return "mentoor amount"
+
+    if type_ == "mentees":
+        query = """SELECT count(*)
+        FROM Students"""
+    elif type_ == "mentors":
+        query = """SELECT count(*)
+        FROM Mentors"""
+    results = cursor.execute(query).fetchall()
+
+    return results[0][0]
 
 
 def nameSplit(name):
