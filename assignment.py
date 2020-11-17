@@ -57,6 +57,29 @@ def newMenteeLayout(num):
     return newMenteeLayout, num
 
 
+def reportLayout(num):
+
+    layout = [
+        [gui.Text("Total Tutorials: ", key=f'totutexp{num}'), gui.Text("", key=f'__TotalTutorials__{num}', size=(6,1))],
+        [gui.Listbox([1, 2, 3, 4, "testing"], key=f'__SubjAmount__{num}',size=(20,20))]
+    ]
+
+    return layout, num
+
+
+def Report():
+    global windowsLoaded
+
+    layout, refNum = reportLayout(windowsLoaded)
+    
+    report = gui.Window("Tutorials Report", layout)
+
+    while True:
+        event, values = report.read()
+
+        if event in [f'__EXIT__{refNum}', gui.WIN_CLOSED]:
+            break
+
 def QueryLogin(username, password):
     StudLoginQuery = f"""SELECT Password, fname
     FROM Students WHERE Stud_Num == "{username}" """
@@ -131,6 +154,7 @@ def adminView(adminUser):
     windowsLoaded += 1
     AdminHub = gui.Window("Admin View", Layout, finalize=True)
     AdminHub[f'__adminName__{refNum}'].update(adminUser)
+
     while True:
         event, Values = AdminHub.read()
         
@@ -143,6 +167,8 @@ def adminView(adminUser):
         if event == f'__logout__{refNum}':
             AdminHub.close()
             login()
+        if event == f'__Report__{refNum}':
+            Report()
 
 
 def newMentee():
@@ -204,5 +230,4 @@ def nameSplit(name):
         return False, False
 
 
-#nicee
 login()
