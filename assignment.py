@@ -381,7 +381,7 @@ def newAdmin():
 
     layout, refNum = newAdminLayout(windowsLoaded)
     windowsLoaded += 1
-    newAdminWindow = gui.Window(layout)
+    newAdminWindow = gui.Window("Add A New Admin", layout)
 
     while True:
         event, values = newAdminWindow.read()
@@ -392,14 +392,18 @@ def newAdmin():
         if event == f'__SUBMIT__{refNum}':
             if values[f'__Username__{refNum}'] and values[f'__Password__{refNum}'] and values[f'__ConfirmPass__{refNum}']:
                 username = values[f'__Username__{refNum}']
-                if areEqual(values[f'__Password__{refNum}'], values['__ConfirmPass__{refNum}']):
-                    addQuery = f"""INSERT INTO Admin (Username, Password) VALUES ({username}, {values[f'__Password__{refNum}']})"""
+                if areEqual(values[f'__Password__{refNum}'], values[f'__ConfirmPass__{refNum}']):
+                    addQuery = f"""INSERT INTO AdminLogin (Username, Password) VALUES ("{username}", "{values[f'__Password__{refNum}']}")"""
                     if gui.popup_yes_no(f"Are You Sure You Want To Make {username} An Admin? ") == "Yes":
                         cursor.execute(addQuery)
                         db.commit()
                         gui.popup_ok(f"ok, {username} is now an admin")
+                        newAdminWindow.close()
+                        break
                     else:
                         gui.popup_ok(f"ok, {username} is not an admin")
+                        newAdminWindow.close()
+                        break
 
 
 def newMentor():
