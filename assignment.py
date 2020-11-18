@@ -74,23 +74,23 @@ def findMentorsLayout(num):
 
     Subquery = """SELECT Name FROM Subjects"""
     Subresults = cursor.execute(Subquery).fetchall()
-    subjectsList = [" "]
+    subjectsList = ["Any"]
     for tup in Subresults:
         subjectsList.append(tup[0])
 
     timeQuery = """SELECT day FROM Sessions"""
     timeResults = cursor.execute(timeQuery).fetchall()
-    timeList = [" "]
+    timeList = ["Any"]
     for tup in timeResults:
         timeList.append(tup[0])
 
-    data = [[' ' for row in range(3)]for col in range(6)]
+    data = [['   ' for row in range(2)]for col in range(6)]
 
     layout = [
         [gui.Text("Subject: ", key=f'SubjectPrompt{num}'), gui.Combo(subjectsList, key=f'__Subject__{num}')],
         [gui.Text("Session", key=f'SessionPrompt{num}'), gui.Combo(timeList, key=f'__Session__{num}')],
         [gui.Submit("Update Tutorials", key=f'__Search__{num}'), gui.Button("Exit", key=f'__EXIT__{num}')],
-        [gui.Table(headings=['Mentor', 'Subject', 'Session'], values=data, key=f'__Tutorials__{num}')]
+        [gui.Table(headings=['Mentor', 'Session'], values=data, key=f'__Tutorials__{num}')]
     ]
 
     return layout, num
@@ -200,17 +200,36 @@ def getMentors(subject, time):
     if time == "Any":
         time = ""
 
-    getIDquery = f"""SELECT MentorID FROM MentorSubjects
-    WHERE Subjects.Name LIKE '%{subject}%'
-    INNER JOIN Subjects ON MentorSubjects.SubjectID = Subjects.SubjectID"""
-    
+    getIDquery = f"""SELECT MentorSubjects.MentorID, Subjects.Name FROM MentorSubjects
+    INNER JOIN Subjects ON MentorSubjects.SubjectID = Subjects.SubjectID
+    WHERE Subjects.Name like '%{subject}%'"""
+
     mentorIDresults = cursor.execute(getIDquery).fetchall()
     mentors = []
     for tup in mentorIDresults:
         mentors.append(tup[0])
     
+    if len(mentors) < 2:
+        mentors = f"({mentors[0]})"
+    else:
+        mentors = tuple(mentors)
 
+    finalquery = f"""SELECT Mentors.fname, Sessions.Day, Mentors.MentorID
+    FROM MentorAvailabilities
+    INNER JOIN Mentors ON MentorAvailabilities.MentorID = Mentors.MentorID
+    INNER JOIN Sessions ON MentorAvailabilities.SessionID = Sessions.SessionID
+    WHERE Mentors.MentorID in {tuple(mentors)} AND Sessions.Day LIKE '%{time}%'"""
 
+    finalResults = cursor.execute(finalquery).fetchall()
+    
+    table = []
+    tableKey = []
+    for tup in finalResults:
+        table.append([tup[0], tup[1]])
+        tableKey.append(tup[2])
+    
+    return table,tableKey
+    
 
 def findMentorsView(studnum):
     global windowsLoaded
@@ -226,8 +245,8 @@ def findMentorsView(studnum):
         if event == f'__Search__{refNum}':
             subject = values[f'__Subject__{refNum}']
             time = values[f'__Session__{refNum}']
-
-            window[f'__Tutorials__{refNum}'].update(getMentors(subject, time))
+            table, tableKey = getMentors(subject, time)
+            window[f'__Tutorials__{refNum}'].update(table)
 
 
 def menteeView(studentNum):
@@ -344,5 +363,6 @@ def nameSplit(name):
         return nameList[0], nameList[1]
     except IndexError:
         return False, False
+
 
 login()
