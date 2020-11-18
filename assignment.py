@@ -37,6 +37,7 @@ def adminViewLayout(num):
         [gui.Text("________________________________________", key=f'divide{num}')],
         [gui.Button("Register Mentee", key=f"__NewMentee__{num}", size=(35, 2))],
         [gui.Button("Register Mentor", key=f"__NewMentor__{num}", size=(35, 2))],
+        [gui.Button("Add New Admin", key=f"__NewAdmin__{num}", size=(35, 2))],
         [gui.Button("Booked Tutorials", key=f"__Tutorials__{num}", size=(35, 2))],
         [gui.Button("Tutorials Report", key=f'__Report__{num}', size=(35, 2))],
         [gui.Button("Exit", key=f'__Exit__{num}', size=(17, 2)), gui.Button("logout", key=f'__logout__{num}', size=(17, 2))]
@@ -74,23 +75,34 @@ def findMentorsLayout(num):
 
     Subquery = """SELECT Name FROM Subjects"""
     Subresults = cursor.execute(Subquery).fetchall()
-    subjectsList = ["Any"]
+    subjectsList = []
     for tup in Subresults:
         subjectsList.append(tup[0])
 
-    timeQuery = """SELECT day FROM Sessions"""
+    timeQuery = """SELECT Day FROM Sessions"""
     timeResults = cursor.execute(timeQuery).fetchall()
     timeList = ["Any"]
     for tup in timeResults:
         timeList.append(tup[0])
 
-    data = [['   ' for row in range(2)]for col in range(6)]
+    data = [['' for row in range(2)]for col in range(6)]
 
     layout = [
         [gui.Text("Subject: ", key=f'SubjectPrompt{num}'), gui.Combo(subjectsList, key=f'__Subject__{num}')],
         [gui.Text("Session", key=f'SessionPrompt{num}'), gui.Combo(timeList, key=f'__Session__{num}')],
         [gui.Submit("Update Tutorials", key=f'__Search__{num}'), gui.Button("Exit", key=f'__EXIT__{num}')],
-        [gui.Table(headings=['Mentor', 'Session'], values=data, key=f'__Tutorials__{num}')]
+        [gui.Table(headings=['Mentor', 'Session'], values=data, key=f'__Tutorials__{num}', size=(20, None))],
+        [gui.Button("Book Selected Tutorials", key=f'__Book__{num}')]
+    ]
+
+    return layout, num
+
+
+def  newAdminLayout(num):
+    layout = [
+        [gui.Text("Username: ", key=f'__UsernamePrompt__{num}'), gui.InputText(default_text="username", key=f'__Username__{num}')],
+        [gui.Text("Password: ", key=f'__PasswordPrompt__{num}'), gui.InputText(default_text="password", key=f'__Password__{num}'), gui.Text("Confirm Password: ", key=f'__ConfirmPasswordPrompt__{num}'), gui.InputText(default_text="confirm password", key=f'__ConfirmPass__{num}')],
+        [gui.Submit("Add Admin", key=f'__SUBMIT__{num}'), gui.Button("Cancel", key=f'__Exit__{num}')]
     ]
 
     return layout, num
@@ -195,8 +207,6 @@ def login():
 
 
 def getMentors(subject, time):
-    if subject == "Any":
-        subject = ""
     if time == "Any":
         time = ""
 
@@ -209,7 +219,9 @@ def getMentors(subject, time):
     for tup in mentorIDresults:
         mentors.append(tup[0])
     
-    if len(mentors) < 2:
+    if len(mentors) == 0:
+        mentors = "NO MENTORS"
+    elif len(mentors) < 2:
         mentors = f"({mentors[0]})"
     else:
         mentors = tuple(mentors)
@@ -229,8 +241,27 @@ def getMentors(subject, time):
         tableKey.append(tup[2])
     
     return table,tableKey
-    
 
+
+def bookTutorial(mentorID, studnum, subjectName, timeName):
+    getSubjectIDQuery = f"SELECT SubjectID FROM Subjects WHERE Name LIKE '%{subjectName}%'"
+    subjectID = cursor.execute(getSubjectIDQuery).fetchone()[0]
+
+    getTimeIDQuery = f"SELECT SessionID FROM Sessions WHERE Day LIKE '%{timeName}'"
+    TimeID = cursor.execute(getTimeIDQuery).fetchone()[0]
+
+    BookQuery = f"""INSERT INTO Tutorials (MentorID, Stud_Num, SubjectID, SessionID) VALUES ({mentorID}, {studnum}, {subjectID}, {TimeID})"""
+    
+    if gui.popup_yes_no("Are You Sure You Want To Book This Tutorial?") == "Yes":
+        cursor.execute(BookQuery)
+        getMentorNameQuery = f"SELECT fname FROM Mentors WHERE MentorID = {mentorID}"
+        mentorName = cursor.execute(getMentorNameQuery).fetchone()[0]
+        gui.popup_ok(f"ok, {mentorName} was successfully Booked for a {subjectName} Tutorial on {timeName}, see you then :)")
+        db.commit()
+    else:
+        gui.popup_ok("Ok, The Booking Was NOT Placed :)")
+
+    
 def findMentorsView(studnum):
     global windowsLoaded
     layout, refNum = findMentorsLayout(windowsLoaded)
@@ -239,14 +270,21 @@ def findMentorsView(studnum):
 
     while True:
         event, values = window.read()
-
         if event in [gui.WIN_CLOSED, f'__EXIT__{refNum}']:
+            window.close()
             break
         if event == f'__Search__{refNum}':
             subject = values[f'__Subject__{refNum}']
             time = values[f'__Session__{refNum}']
             table, tableKey = getMentors(subject, time)
             window[f'__Tutorials__{refNum}'].update(table)
+        if event == f'__Book__{refNum}':
+            if not values[f'__Tutorials__{refNum}']:
+                gui.popup_ok("please select a tutorial to book")
+            elif not values[f'__Subject__{refNum}']:
+                gui.popup("Please Select A Subject As This Tutor May Not Be Able To Tutor You In The Field That You Are Looking For")
+            else:
+                bookTutorial(tableKey[values[f'__Tutorials__{refNum}'][0]], studnum, subject, table[values[f'__Tutorials__{refNum}'][0]][1])
 
 
 def menteeView(studentNum):
@@ -261,7 +299,7 @@ def menteeView(studentNum):
 
     while True:
         event, values = Mainwindow.read()
-        if event in (f'__Exit__{refNum}', gui.WIN_CLOSED):
+        if event in [f'__Exit__{refNum}', gui.WIN_CLOSED]:
             break
         if event == f'__Logout__{refNum}':
             Mainwindow.close()
@@ -291,6 +329,8 @@ def adminView(adminUser):
             login()
         if event == f'__Report__{refNum}':
             Report()
+        if event == f"__NewAdmin__{refNum}":
+            newAdmin()
 
 
 def newMentee():
@@ -315,7 +355,7 @@ def newMentee():
 
             if fname != False:
 
-                if pass1 != pass2:
+                if not areEqual(pass1, pass2):
                     gui.popup_ok("The Passwords Dont Match :(")
                 else:
                     addQuery = f"""INSERT INTO Students('Stud_Num', 'Password', 'fname', 'lname', 'Grade')
@@ -334,6 +374,32 @@ def newMentee():
         if event == f'__logout__{refNum}':
             window.close()
             login()
+
+
+def newAdmin():
+    global windowsLoaded
+
+    layout, refNum = newAdminLayout(windowsLoaded)
+    windowsLoaded += 1
+    newAdminWindow = gui.Window(layout)
+
+    while True:
+        event, values = newAdminWindow.read()
+
+        if event in [gui.WIN_CLOSED, f'__Exit__{refNum}']:
+            newAdminWindow.close()
+            break
+        if event == f'__SUBMIT__{refNum}':
+            if values[f'__Username__{refNum}'] and values[f'__Password__{refNum}'] and values[f'__ConfirmPass__{refNum}']:
+                username = values[f'__Username__{refNum}']
+                if areEqual(values[f'__Password__{refNum}'], values['__ConfirmPass__{refNum}']):
+                    addQuery = f"""INSERT INTO Admin (Username, Password) VALUES ({username}, {values[f'__Password__{refNum}']})"""
+                    if gui.popup_yes_no(f"Are You Sure You Want To Make {username} An Admin? ") == "Yes":
+                        cursor.execute(addQuery)
+                        db.commit()
+                        gui.popup_ok(f"ok, {username} is now an admin")
+                    else:
+                        gui.popup_ok(f"ok, {username} is not an admin")
 
 
 def newMentor():
@@ -363,6 +429,13 @@ def nameSplit(name):
         return nameList[0], nameList[1]
     except IndexError:
         return False, False
+
+
+def areEqual(a, b):
+    if a == b:
+        return True
+    else:
+        return False
 
 
 login()
