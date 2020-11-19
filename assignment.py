@@ -63,9 +63,11 @@ def newMenteeLayout(num):
     newMenteeLayout = [
         [gui.Text("Add A New Mentee", key=f'title{num}')],
         [gui.Text("__________________", key=f'Barrier{num}')],
-        [gui.Text("Name: ", key=f'NamePrompt{num}'), gui.InputText(key=f'__StudName__{num}'), gui.Text("Grade: ", key=f'grade Prompt {num}'), gui.InputText(key=f'__StudGrade__{num}')],
+        [gui.Text("Name: ", key=f'NamePrompt{num}'), gui.InputText(key=f'__StudName__{num}'),
+        gui.Text("Grade: ", key=f'grade Prompt {num}'), gui.InputText(key=f'__StudGrade__{num}')],
         [gui.Text("Student Number: ", key=f'studnumprompt{num}'), gui.InputText(key=f'__StudNum__{num}')],
-        [gui.Text("Password: ", key=f'passPrompt{num}'), gui.InputText(key=f'__InitPass__{num}'), gui.Text("Confirm Password: ", key=f'confirmPrompt{num}'), gui.InputText(key=f'__PassVerify__{num}')],
+        [gui.Text("Password: ", key=f'passPrompt{num}'), gui.InputText(key=f'__InitPass__{num}'),
+        gui.Text("Confirm Password: ", key=f'confirmPrompt{num}'), gui.InputText(key=f'__PassVerify__{num}')],
         [gui.Submit("Register Student", key=f'__Submit__{num}'), gui.Button("Close", key=f'__Exit__{num}')]
     ]
 
@@ -78,7 +80,8 @@ def reportLayout(num):
     layout = [
         [gui.Text("Total Tutorials: ", key=f'totutexp{num}'), gui.Text("", key=f'__TotalTutorials__{num}', size=(6,1))],
         [gui.Table(values=data, headings=["     Subject     ", "Total Tutorials"], key=f'__SubjAmount__{num}')],
-        [gui.Text("Mentees: ", key=f'menteesPoint{num}'), gui.Text("", key=f'Num__Mentees__{num}', size=(5,0)), gui.Text("Mentors: ", key=f'mentorsPoint{num}'), gui.Text("", key=f'Num__Mentors__{num}', size=(5,0))]
+        [gui.Text("Mentees: ", key=f'menteesPoint{num}'), gui.Text("", key=f'Num__Mentees__{num}', size=(5,0)),
+        gui.Text("Mentors: ", key=f'mentorsPoint{num}'), gui.Text("", key=f'Num__Mentors__{num}', size=(5,0))]
     ]
 
     return layout, num
@@ -114,7 +117,9 @@ def findMentorsLayout(num):
 def  newAdminLayout(num):
     layout = [
         [gui.Text("Username: ", key=f'__UsernamePrompt__{num}'), gui.InputText(default_text="username", key=f'__Username__{num}')],
-        [gui.Text("Password: ", key=f'__PasswordPrompt__{num}'), gui.InputText(default_text="password", key=f'__Password__{num}'), gui.Text("Confirm Password: ", key=f'__ConfirmPasswordPrompt__{num}'), gui.InputText(default_text="confirm password", key=f'__ConfirmPass__{num}')],
+        [gui.Text("Password: ", key=f'__PasswordPrompt__{num}'), gui.InputText(default_text="password", key=f'__Password__{num}'),
+        gui.Text("Confirm Password: ", key=f'__ConfirmPasswordPrompt__{num}'),
+        gui.InputText(default_text="confirm password", key=f'__ConfirmPass__{num}')],
         [gui.Submit("Add Admin", key=f'__SUBMIT__{num}'), gui.Button("Cancel", key=f'__Exit__{num}')]
     ]
 
