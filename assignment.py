@@ -345,96 +345,181 @@ def login():
                 gui.popup_ok("Incorrect Username or Password")
 
 
-def getMentors(subject, time):
+def getMentors(subject, time):]
+    """
+    This function takes two variables, subject and time, and it returns a list of mentors
+    that are available at the passed time and are registered to tutor the passed subject. called
+    by the find mentors function and is the 'backend' behind the search for booking mentors
+    """
+    #format the passed information. as the time value is "any" when not specified. this turns it into
+    # an empty string that when combined with the LIKE keyword, will match with every time
     if time == "Any":
         time = ""
 
+    #define the initial query to filter out any mentors that cant teach the specified subject
     getIDquery = f"""SELECT MentorSubjects.MentorID, Subjects.Name FROM MentorSubjects
     INNER JOIN Subjects ON MentorSubjects.SubjectID = Subjects.SubjectID
     WHERE Subjects.Name like '%{subject}%'"""
 
+    #get the results of the query
     mentorIDresults = cursor.execute(getIDquery).fetchall()
     mentors = []
+    #add all of the results to a list to be used in the next query
     for tup in mentorIDresults:
         mentors.append(tup[0])
     
+    #add check if there were no results, this string wont match any mentor name and it will let the next query
+    #go through without causing a sqlite3 error
     if len(mentors) == 0:
         mentors = "NO MENTORS"
+    #again, seperate instance if there is only one mentor
     elif len(mentors) < 2:
         mentors = f"({mentors[0]})"
+    #finally, any more than 1 mentor can be added to a tuple to be passed directly into the query (because 
+    # of the brackets around a tuple, this was a happy accident that made my life a little bit easier)
     else:
         mentors = tuple(mentors)
 
+    #define the query formatted with the information from the previous query and the time variable
+    #passed to the function
     finalquery = f"""SELECT Mentors.fname, Sessions.Day, Mentors.MentorID
     FROM MentorAvailabilities
     INNER JOIN Mentors ON MentorAvailabilities.MentorID = Mentors.MentorID
     INNER JOIN Sessions ON MentorAvailabilities.SessionID = Sessions.SessionID
     WHERE Mentors.MentorID in {tuple(mentors)} AND Sessions.Day LIKE '%{time}%'"""
 
+    #get the results of the query
     finalResults = cursor.execute(finalquery).fetchall()
     
     table = []
     tableKey = []
+    #add all of the results to seperate lists, one list to be passed into a table and one dictionary as a key storing the
+    #  id's of elements in the table for use in querys later
     for tup in finalResults:
+        #add to the table
         table.append([tup[0], tup[1]])
+        #add to the table key
         tableKey.append(tup[2])
     
+    #return the list and the dictionary for use by the function that called it
     return table,tableKey
 
 
 def bookTutorial(mentorID, studnum, subjectName, timeName):
+    """
+    This function takes variables of the student number, the mentor ID the name of the subject
+    and the name of the day that a tutorial is to take place and it inserts the values into
+    the tutorial table.
+    """
+    #a query to get the id of subject with the name given. as subjects dont have the same name, this 
+    # shouldnt cause any issues, even though it could be done a little bit better by getting the ID 
+    # of the subject and passing it to this function, but i want to sleep at some point this year so
+    #Im not going to iron out every detail such as that one for a proof of concept :)
     getSubjectIDQuery = f"SELECT SubjectID FROM Subjects WHERE Name LIKE '%{subjectName}%'"
+    #execute the query
     subjectID = cursor.execute(getSubjectIDQuery).fetchone()[0]
 
+    #same as before, get the id of the time with the name passed to the function, could be better, but sleep
     getTimeIDQuery = f"SELECT SessionID FROM Sessions WHERE Day LIKE '%{timeName}'"
+    #execute the query
     TimeID = cursor.execute(getTimeIDQuery).fetchone()[0]
 
+    #define a query but not execute it yet, because there is an "are you sure" popup before booking it
     BookQuery = f"""INSERT INTO Tutorials (MentorID, Stud_Num, SubjectID, SessionID) VALUES ({mentorID}, {studnum}, {subjectID}, {TimeID})"""
     
+    #call a pop up
     if gui.popup_yes_no("Are You Sure You Want To Book This Tutorial?") == "Yes":
+        #if the popup was answered with yes, execute the booking query
         cursor.execute(BookQuery)
+        #get the name of the mentor for the confirmation popup
         getMentorNameQuery = f"SELECT fname FROM Mentors WHERE MentorID = {mentorID}"
         mentorName = cursor.execute(getMentorNameQuery).fetchone()[0]
+        #popup telling the user that the tutorial was booked
         gui.popup_ok(f"ok, {mentorName} was successfully Booked for a {subjectName} Tutorial on {timeName}, see you then :)")
+        #update the availabilities table, updating that the time that was just booked is no longer 
+        # available for this particular mentor
         updateMentorAvailabilityQuery = f"""DELETE FROM MentorAvailabilities WHERE MentorID = {mentorID} AND SessionID = {TimeID}"""
         cursor.execute(updateMentorAvailabilityQuery)
+        #commit changes to the database
         db.commit()
+    # if the user answer no to the are you sure popup
     else:
+        #tell the user that the booking was not placed
         gui.popup_ok("Ok, The Booking Was NOT Placed :)")
 
     
 def findMentorsView(studnum):
+    """
+    A function that takes the value student number and creates a gui with a layout as previously
+    defined. the gui takes inputs for changing the search parameters and updates a table with
+    information from the find mentors function. also calls the book mentor function when a tutorial
+    session is booked
+    """
+    #declare global variables
     global windowsLoaded
+    #get the layout and reference number from an external function
     layout, refNum = findMentorsLayout(windowsLoaded)
+    #incremint windows loaded variable so that the same keys arent used again
     windowsLoaded += 1
+    #initialise the window using the layout
     window = gui.Window("Find Mentors", layout)
 
+    #loop to update and display the window
     while True:
+        #get the events taken place and the values of the inputs in the gui
         event, values = window.read()
+        #if the window is closed either with the cross or the exit 
+        # button, break the loop and close the window
         if event in [gui.WIN_CLOSED, f'__EXIT__{refNum}']:
             window.close()
             break
+        
+        #if the user clicks the search button
         if event == f'__Search__{refNum}':
+            #set variables to values selected in the gui
             subject = values[f'__Subject__{refNum}']
             time = values[f'__Session__{refNum}']
+            #get the table to display and the table key containing id's
+            #from the get mentors function
             table, tableKey = getMentors(subject, time)
+            #update the table displayed with the new data
             window[f'__Tutorials__{refNum}'].update(table)
+        #if the user clicks on the book button
         if event == f'__Book__{refNum}':
+            #if they havent selected a tutorial in the table
             if not values[f'__Tutorials__{refNum}']:
+                #tell the user to select a tutorial
                 gui.popup_ok("please select a tutorial to book")
+            #else if the user has slected a tutorial but hasnt specified a subject in their search
             elif not values[f'__Subject__{refNum}']:
-                gui.popup("Please Select A Subject As This Tutor May Not Be Able To Tutor You In The Field That You Are Looking For")
+                #tell them to specify a subject so that the mentors that they book
+                # can teach the specific subject
+                gui.popup("""Please Select A Subject As This Tutor 
+                May Not Be Able To Tutor You In The Field That You Are Looking For""")
+            #else, ie the user has specified a subject and has selected a tutorial
             else:
-                bookTutorial(tableKey[values[f'__Tutorials__{refNum}'][0]], studnum, subject, table[values[f'__Tutorials__{refNum}'][0]][1])
+                #call the book tutorial function to insert the values into the booked tutorials table
+                bookTutorial(tableKey[values[f'__Tutorials__{refNum}'][0]], studnum, subject,
+                table[values[f'__Tutorials__{refNum}'][0]][1])
 
 
 def seeTutorials(studnum):
+    """
+    This function creates a gui that dispkays all of the tutorials that the user has booked
+    requires the students number for query purposes
+    """
+    #declare global variables
     global windowsLoaded
+    #get the layout and reference number from the re-usable layout function
     layout, refNum = seeTutorialsLayout(windowsLoaded, studnum)
-
+    #initialise the gui
     tutorialsWindow = gui.Window("My Tutorials", layout, finalize=True)
+    #get all the tutorials booked from an external function. and a dictionary key containing
+    # the id's for query purposes
     data, key = getTutorialsBooked(studnum)
+    #update the window with the data just obtained
     tutorialsWindow[f'__Table__{refNum}'].update(data)
+    #while true loop to display and update the window
     while True:
         event, values = tutorialsWindow.read()
 
