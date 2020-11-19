@@ -21,10 +21,23 @@ def loginLayout(num):
     return Layout, num
 
 
+def seeTutorialsLayout(num, studNum):
+
+    data = [['Filler Text'for col in range(3)]for row in range(3)]
+
+    layout = [
+        [gui.Table(headings=["Tutor", "Subject", "Day"], values=data, key=f'__Table__{num}',def_col_width=11)],
+        [gui.Button("Exit", key=f'__exit__{num}'), gui.Button("Cancel This Tutorial", key=f'__REMOVE__{num}')]
+    ]
+
+    return layout, num
+
+
 def menteeViewLayout(num):
     menteeViewLayoutList = [
         [gui.Text("", size=(6, 1), key=f'__FName__{num}'), gui.Text("Mentors For Mentees Hub", key=f'insert{num}')],
         [gui.Button("Find Mentors", key=f'__FindMentor__{num}', size=(20,2))],
+        [gui.Button("My Tutorials", key=f'__BookedTutorials__{num}', size=(20,2))],
         [gui.Button("Exit", key=f'__Exit__{num}'), gui.Button("Logout", key=f'__Logout__{num}')]
     ]
 
@@ -85,7 +98,7 @@ def findMentorsLayout(num):
     for tup in timeResults:
         timeList.append(tup[0])
 
-    data = [['' for row in range(2)]for col in range(6)]
+    data = [['           ' for row in range(2)]for col in range(6)]
 
     layout = [
         [gui.Text("Subject: ", key=f'SubjectPrompt{num}'), gui.Combo(subjectsList, key=f'__Subject__{num}')],
@@ -257,6 +270,8 @@ def bookTutorial(mentorID, studnum, subjectName, timeName):
         getMentorNameQuery = f"SELECT fname FROM Mentors WHERE MentorID = {mentorID}"
         mentorName = cursor.execute(getMentorNameQuery).fetchone()[0]
         gui.popup_ok(f"ok, {mentorName} was successfully Booked for a {subjectName} Tutorial on {timeName}, see you then :)")
+        updateMentorAvailabilityQuery = f"""DELETE FROM MentorAvailabilities WHERE MentorID = {mentorID} AND SessionID = {TimeID}"""
+        cursor.execute(updateMentorAvailabilityQuery)
         db.commit()
     else:
         gui.popup_ok("Ok, The Booking Was NOT Placed :)")
@@ -287,6 +302,36 @@ def findMentorsView(studnum):
                 bookTutorial(tableKey[values[f'__Tutorials__{refNum}'][0]], studnum, subject, table[values[f'__Tutorials__{refNum}'][0]][1])
 
 
+def seeTutorials(studnum):
+    global windowsLoaded
+    layout, refNum = seeTutorialsLayout(windowsLoaded, studnum)
+
+    tutorialsWindow = gui.Window("My Tutorials", layout, finalize=True)
+    data, key = getTutorialsBooked(studnum)
+    tutorialsWindow[f'__Table__{refNum}'].update(data)
+    while True:
+        event, values = tutorialsWindow.read()
+
+        if event == f'__exit__{refNum}' or event == gui.WIN_CLOSED:
+            break
+
+        if event == f'__REMOVE__{refNum}':
+            if not values[f'__Table__{refNum}']:
+                gui.popup_ok("Please Select A Tutorial To Cancel")
+            else:
+                mentorID = key['MentorID']
+                sessionID = key['SessionID']
+                query = f"""DELETE FROM Tutorials WHERE MentorID = {mentorID} AND SessionID = {sessionID}"""
+                if gui.popup_yes_no(f"Are You Sure You Want To Cancel Your {data[0][1][0]} Tutorial with {data[0][0][0]}?") == "Yes":
+                    cursor.execute(query)
+                    db.commit()
+                    data, key = getTutorialsBooked(studnum)
+                    tutorialsWindow[f'__Table__{refNum}'].update(data)
+                else:
+                    gui.popup_ok("ok, This Tutorial Was Not Cancelled, See You Then")
+
+
+
 def menteeView(studentNum):
     global windowsLoaded
     studInfoQuery = f"""SELECT fname FROM Students WHERE Stud_Num == {studentNum}"""
@@ -306,6 +351,8 @@ def menteeView(studentNum):
             login()
         if event == f'__FindMentor__{refNum}':
             findMentorsView(studentNum)
+        if event == f'__BookedTutorials__{refNum}':
+            seeTutorials(studentNum)
 
 
 def adminView(adminUser):
@@ -440,6 +487,26 @@ def areEqual(a, b):
         return True
     else:
         return False
+
+
+def getTutorialsBooked(studNum):
+    getTutorialsQuery = f"""SELECT Mentors.fname, Subjects.Name, Sessions.Day, Mentors.MentorID, Sessions.SessionID
+    FROM Tutorials
+    INNER JOIN Sessions ON Tutorials.SessionID = Sessions.SessionID
+    INNER JOIN Mentors ON Tutorials.MentorID = Mentors.MentorID
+    INNER JOIN Subjects ON Tutorials.SubjectID = Subjects.SubjectID
+    WHERE Tutorials.Stud_Num = {studNum}"""
+    getTutorialsResults = cursor.execute(getTutorialsQuery).fetchall()
+    tutList = []
+    for tutorial in getTutorialsResults:
+        tutList.append([[tutorial[0]], [tutorial[1]], [tutorial[2]]])
+    
+    raw_data = {"MentorID":None, "SessionID":None}
+
+    for tutorial in getTutorialsResults:
+        raw_data['MentorID'] = tutorial[3]
+        raw_data['SessionID'] = tutorial[4]
+    return tutList, raw_data
 
 
 login()
