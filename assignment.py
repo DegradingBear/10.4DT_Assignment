@@ -345,7 +345,7 @@ def login():
                 gui.popup_ok("Incorrect Username or Password")
 
 
-def getMentors(subject, time):]
+def getMentors(subject, time):
     """
     This function takes two variables, subject and time, and it returns a list of mentors
     that are available at the passed time and are registered to tutor the passed subject. called
@@ -505,7 +505,7 @@ def findMentorsView(studnum):
 
 def seeTutorials(studnum):
     """
-    This function creates a gui that dispkays all of the tutorials that the user has booked
+    This function creates a gui that displays all of the tutorials that the user has booked
     requires the students number for query purposes
     """
     #declare global variables
@@ -521,179 +521,295 @@ def seeTutorials(studnum):
     tutorialsWindow[f'__Table__{refNum}'].update(data)
     #while true loop to display and update the window
     while True:
+        # get the events and information information entered into the window
         event, values = tutorialsWindow.read()
 
+        #break if the user closes the window or hits the exit button
         if event == f'__exit__{refNum}' or event == gui.WIN_CLOSED:
             break
-
+        
+        #if the user clicks the remove button
         if event == f'__REMOVE__{refNum}':
+            # if the user hasnt selected anything in the table
             if not values[f'__Table__{refNum}']:
+                # tell the user to select a tutorial
                 gui.popup_ok("Please Select A Tutorial To Cancel")
+            #if the user has selected a tutorial from the table
             else:
+                # set values to the values stored in the key dictionary, for use in query
                 mentorID = key['MentorID']
                 sessionID = key['SessionID']
-                query = f"""DELETE FROM Tutorials WHERE MentorID = {mentorID} AND SessionID = {sessionID}"""
+                # set a query to remove the selected tutorial
+                query = f"""DELETE FROM Tutorials
+                WHERE MentorID = {mentorID} AND SessionID = {sessionID}"""
+                #popup to confirm the removal of the selected tutorial, if yes...
                 if gui.popup_yes_no(f"Are You Sure You Want To Cancel Your {data[0][1][0]} Tutorial with {data[0][0][0]}?") == "Yes":
+                    #execute the removal query
                     cursor.execute(query)
+                    updateAvailabilities = f"""INSERT INTO MentorAvailabilities (MentorID, SessionID) VALUES ("{mentorID}", "{sessionID}")"""
+                    cursor.execute(updateAvailabilities)
+                    #save changes to the database
                     db.commit()
+                    #update the information in the list and dictionary and update the table in the window
                     data, key = getTutorialsBooked(studnum)
                     tutorialsWindow[f'__Table__{refNum}'].update(data)
-                else:
+                else: #if the user changes their mind
+                    #tell the user that the tutorial was not cancelled
                     gui.popup_ok("ok, This Tutorial Was Not Cancelled, See You Then")
 
 
 
 def menteeView(studentNum):
+    """
+    this function is the window that is the 'hub' for the mentee view, it contains buttons
+    to redirect to other windows that actually contain the functionality of this project
+    """
+    #declare global variables
     global windowsLoaded
+    #get the students info using the passed student number
     studInfoQuery = f"""SELECT fname FROM Students WHERE Stud_Num == {studentNum}"""
     studInfo = cursor.execute(studInfoQuery).fetchall()
     fname = studInfo[0][0]
+    #get the layout and reference number from a reusable layout function
     layout, refNum = menteeViewLayout(windowsLoaded)
+    #incremint the windows loaded to avoid duplicate key errors
     windowsLoaded += 1
+    #initialize the window
     Mainwindow = gui.Window(f"{fname}'s Mentee Hub", layout, finalize=True)
+    #update the window to display the users name, aquired by the previous query
     Mainwindow[f'__FName__{refNum}'].update(f"{fname}'s")
 
+    #main loop to update and display the window
     while True:
+        #detect events and get values from input fields
         event, values = Mainwindow.read()
+        #if the user closes the window or clicks the exit button, break the loop and close the window
         if event in [f'__Exit__{refNum}', gui.WIN_CLOSED]:
             break
+        #if the user clicks the logout button, close the window and open the login window
         if event == f'__Logout__{refNum}':
             Mainwindow.close()
             login()
+            break
+        #if the user clicks the find mentors button, load the find mentors window
         if event == f'__FindMentor__{refNum}':
             findMentorsView(studentNum)
+        #if the user clicks the my tutorials button, load the seeTutorials window function
         if event == f'__BookedTutorials__{refNum}':
             seeTutorials(studentNum)
 
 
 def adminView(adminUser):
+    """
+    This function displays a window that is the 'hub' for the admin interface
+    it contains buttons that redirect to all the other functionalities that the admin has access to
+    """
+    #declare global variables
     global windowsLoaded
+    #get the layout and reference number from the reusable layout function
     Layout, refNum = adminViewLayout(windowsLoaded)
+    #incremint the windows loaded to prevent a duplicate key error
     windowsLoaded += 1
+    #initialize the window
     AdminHub = gui.Window("Admin View", Layout, finalize=True)
+    #update values using the admin user value passed to the function from the login function
     AdminHub[f'__adminName__{refNum}'].update(adminUser)
 
+    #main loop that updates and displays the window
     while True:
+        #detect events and input in the window
         event, Values = AdminHub.read()
         
+        #if the user closes the window or presses the exit button, break the loop
         if event in (f'__Exit__{refNum}', gui.WIN_CLOSED):
             break
+        
+        #if the admin clicks the new user button, call the function that displays that window
         if event == f"__NewMentee__{refNum}":
             newMentee()
+        #call the new mentor function
         if event == f'__NewMentor__{refNum}':
             newMentor()
+        #if the user logs out, close the window and open the login window again
         if event == f'__logout__{refNum}':
             AdminHub.close()
             login()
+            break
+        #if the user presses the report button, call the function that produces the report
         if event == f'__Report__{refNum}':
             Report()
+        #create a new admin
         if event == f"__NewAdmin__{refNum}":
             newAdmin()
 
 
 def newMentee():
+    """
+    This function if the window that is called by the admin page, the window that
+    allows the user to create and add a new mentee to the database.
+    """
+    #declare global variables
     global windowsLoaded
+    #get the layout and reference number from the reusable layout function
     layout, refNum = newMenteeLayout(windowsLoaded)
+    # incremint the windows loaded variable to avoid the duplicate key error
     windowsLoaded += 1
+    # initialize the window
     window = gui.Window("Add New Mentee", layout)
+    #main loop that displays and updates the window
     while True:
+        #get events and values that were inputed in the window
         event, Values = window.read()
         
+        #If the user closes the window or clicks the exit button, break the loop
         if event == f'__Exit__{refNum}' or event == gui.WIN_CLOSED:
             break
-
+        
+        #if the user clicks the submit button, get values and add the mentee
         if event == f'__Submit__{refNum}':
+            #get values from the inputs on the window
             name = Values[f'__StudName__{refNum}']
             grade = Values[f'__StudGrade__{refNum}']
             StudNum = Values[f'__StudNum__{refNum}']
             pass1 = Values[f'__InitPass__{refNum}']
             pass2 = Values[f'__PassVerify__{refNum}']
 
+            #split the name variable into the first and last name
             fname, lname = nameSplit(name)
 
+            #if the user input more than one word/name in the name field
             if fname != False:
-
+                #if the two passwords dont match, popup to tell the user to check the inputed passwords
                 if not areEqual(pass1, pass2):
                     gui.popup_ok("The Passwords Dont Match :(")
+                #if the passwords do match
                 else:
+                    #declare query using the information gathered from the window
                     addQuery = f"""INSERT INTO Students('Stud_Num', 'Password', 'fname', 'lname', 'Grade')
                     VALUES({StudNum}, "{pass1}", "{fname}", "{lname}", {grade})"""
 
-                    cursor.execute(addQuery)
-                    if gui.popup_yes_no(f"are you sure you want to add {fname}?"):
+                    if gui.popup_yes_no(f"are you sure you want to add {fname}?"): #if the user is sure
+                        #execute the query and commit changes
+                        cursor.execute(addQuery)
                         db.commit()
+                        #tell the user that the mentee was added
                         gui.popup_ok(f"{fname} was successfuly registered as a Mentee")
-                    else:
+                    else: #if the user isnt sure
+                        #tell the user that the mentee wasnt added
                         gui.popup_ok(f"ok, {fname} was not added :)")
+                    #close the window
                     window.close()
-            else:
+            else: # if the user only put a one word/name string into the name fields
+                #tell the user to put the full name ie, first and last name
                 gui.popup_ok("Please Enter The Students Full Name")
-            
+        #if the user clicks the logout button
         if event == f'__logout__{refNum}':
+            #close the window and call the login function
             window.close()
             login()
+            break
 
 
 def newAdmin():
+    """
+    This window is accesable by the admin hub, and is used to add more admin accounts to the
+    database.
+    """
+    #declare global variables
     global windowsLoaded
 
+    #get the layout and reference number from the reusable layout functions
     layout, refNum = newAdminLayout(windowsLoaded)
+    #incremint the windows loaded variable to avoid key duplicate error
     windowsLoaded += 1
+    #initialise the window
     newAdminWindow = gui.Window("Add A New Admin", layout)
 
+    #main loop that updates and displays the window
     while True:
+        #get events that occured and values that were input into the window
         event, values = newAdminWindow.read()
 
+        #if the user closed the window or clicked the exit button, break the loop and close the window
         if event in [gui.WIN_CLOSED, f'__Exit__{refNum}']:
             newAdminWindow.close()
             break
+        #if the user clicks the submit button
         if event == f'__SUBMIT__{refNum}':
+            #if each of the fields have values put in them
             if values[f'__Username__{refNum}'] and values[f'__Password__{refNum}'] and values[f'__ConfirmPass__{refNum}']:
+                #get the value put into the username field
                 username = values[f'__Username__{refNum}']
+                #if the two passwords are identical
                 if areEqual(values[f'__Password__{refNum}'], values[f'__ConfirmPass__{refNum}']):
+                    #define the query to add the admin
                     addQuery = f"""INSERT INTO AdminLogin (Username, Password) VALUES ("{username}", "{values[f'__Password__{refNum}']}")"""
+                    #if the user is sure they want to add this admin
                     if gui.popup_yes_no(f"Are You Sure You Want To Make {username} An Admin? ") == "Yes":
+                        #execute the query and commit the changes
                         cursor.execute(addQuery)
                         db.commit()
+                        #tell the user that the admin was added and close the window
                         gui.popup_ok(f"ok, {username} is now an admin")
                         newAdminWindow.close()
                         break
-                    else:
+                    else: #if the user isnt sure...
+                        #dont add the admin, tell the user and close the window
                         gui.popup_ok(f"ok, {username} is not an admin")
                         newAdminWindow.close()
                         break
 
 
 def newMentor():
+    """
+    i didnt get around to making this functionality of the app, just wanted to you know...
+    sleep sometime this term :)
+    """
     print("INSERT NEW MENTOR GUI HERE ;)")
 
 
 def getAmount(type_):
-
+    """
+    This function returns the count of a type of user depending on the type variable that is passed to it
+    """
     if type_ == "mentees":
+        #query the amount of students entries
         query = """SELECT count(*)
         FROM Students"""
     elif type_ == "mentors":
+        #query the amount of mentors entries
         query = """SELECT count(*)
         FROM Mentors"""
+    #execute the query
     results = cursor.execute(query).fetchall()
-
+    #return the raw number that came from the query
     return results[0][0]
 
 
 def nameSplit(name):
+    """
+    This function splits the name passed to it from the add mentee function
+    it takes the full name string and splits it into two strings, the fname and the lname
+    that it returns
+    """
+    #split the full name into two strings
     nameList = name.split()
-    print(nameList)
+    #for each string in the name list
     for string in nameList: 
         if string == " ":
-            nameList.remove(string)
-    try:
+            nameList.remove(string) #remove the string if its empty
+    try: #try returning the first and last name strings
         return nameList[0], nameList[1]
-    except IndexError:
-        return False, False
+    except IndexError: #index error if there werent two strings
+        return False, False #return false false, indicating that there werent two names inputed
 
 
 def areEqual(a, b):
+    """
+    Thought of this function when i was sleep deprived. it is very redundant.  :)
+    """
+    #return true if the two values are equal and false if not, totally not
+    # a function that litteraly emulates the == operator or anything... hehe...
     if a == b:
         return True
     else:
@@ -701,23 +817,33 @@ def areEqual(a, b):
 
 
 def getTutorialsBooked(studNum):
+    """
+    This function takes the variable of student number and returns the information around
+    every tutorial that the student is booked in the database
+    """
+    #declare the query using the student number
     getTutorialsQuery = f"""SELECT Mentors.fname, Subjects.Name, Sessions.Day, Mentors.MentorID, Sessions.SessionID
     FROM Tutorials
     INNER JOIN Sessions ON Tutorials.SessionID = Sessions.SessionID
     INNER JOIN Mentors ON Tutorials.MentorID = Mentors.MentorID
     INNER JOIN Subjects ON Tutorials.SubjectID = Subjects.SubjectID
     WHERE Tutorials.Stud_Num = {studNum}"""
+    #execute and fetchall the query results
     getTutorialsResults = cursor.execute(getTutorialsQuery).fetchall()
+    #tutorial list, putting the information in the form that is accepted by the psg table element
     tutList = []
+    #for every index of the returned results
     for tutorial in getTutorialsResults:
-        tutList.append([[tutorial[0]], [tutorial[1]], [tutorial[2]]])
+        tutList.append([[tutorial[0]], [tutorial[1]], [tutorial[2]]])#add the information to the table
     
+    #set a dictionary with keys but no values
     raw_data = {"MentorID":None, "SessionID":None}
 
     for tutorial in getTutorialsResults:
+        #update the raw_data dictionary
         raw_data['MentorID'] = tutorial[3]
         raw_data['SessionID'] = tutorial[4]
     return tutList, raw_data
 
-
+#call the initial function
 login()
